@@ -9,16 +9,41 @@ use Illuminate\Support\Facades\Storage;
 class ProductController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Display a listing of products.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $products = Product::latest()->paginate(10); // Get latest products with pagination
+        $q = $request->input('query', '');
+        $products = Product::when($q, fn($qbr) =>
+        $qbr->where('name','like', "%{$q}%")
+            ->orWhere('category','like', "%{$q}%")
+        )
+            ->paginate(12)
+            ->appends(['query' => $q]);
+
         return view('products.index', compact('products'));
     }
+//    public function index()
+//    {
+//        $query = Product::query();
+//
+//        if (request()->has('search') && request('search') !== '') {
+//            $search = request('search');
+//
+//            $query->where(function ($q) use ($search) {
+//                $q->where('name', 'like', '%{search}%')
+//                    ->orWhere('category', 'like', '%{search}%')
+//                    ->orWhere('description', 'like', '%{search}%');
+//            });
+//        }
+//        $products = $query->orderBy('created_at', 'desc')->paginate(9);
+//        return view('products.index', compact('products'));
+////        $products = Product::paginate(9);
+////        return view('products.index', compact('products'));
+//    }
 
     /**
-     * Show the form for creating a new resource.
+     * Show the form for creating a new product.
      */
     public function create()
     {
@@ -26,39 +51,33 @@ class ProductController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Store a newly created product.
      */
     public function store(Request $request)
     {
-        $request->validate([
+        // Validate form inputs
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'category' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // 2MB Max
             'stock_quantity' => 'required|integer|min:0',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        $data = $request->except('image'); // Get all data except image first
-
+        // Handle image upload
         if ($request->hasFile('image')) {
-            // Store the image in storage/app/public/products
-            // Make sure to run `php artisan storage:link`
-            $path = $request->file('image')->store('public/products');
-            // Store the path relative to the 'public' disk's root
-            $data['image'] = Storage::url($path); // Get the web-accessible URL
-            // Alternative: Store just the path $path and prepend Storage::url() in the view
-            // $data['image'] = $path; // Store relative path from storage/app
+            $path = $request->file('image')->store('products', 'public');
+            $validated['image'] = '/storage/' . $path;
         }
 
-        Product::create($data);
+        Product::create($validated);
 
-        return redirect()->route('products.index')
-            ->with('success', 'Product created successfully.');
+        return redirect()->route('products.index')->with('success', 'Product created successfully.');
     }
 
     /**
-     * Display the specified resource.
+     * Display the specified product.
      */
     public function show(Product $product)
     {
@@ -66,7 +85,7 @@ class ProductController extends Controller
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Show the form for editing the specified product.
      */
     public function edit(Product $product)
     {
@@ -74,89 +93,76 @@ class ProductController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update the specified product.
      */
     public function update(Request $request, Product $product)
     {
-        $request->validate([
+        // Validate form inputs
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'category' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // 2MB Max
             'stock_quantity' => 'required|integer|min:0',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        $data = $request->except('image'); // Get all data except image first
-
+        // Handle image upload if new file is uploaded
         if ($request->hasFile('image')) {
-            // Optional: Delete old image if it exists
-            if ($product->image) {
-                // Assuming $product->image stores path like 'public/products/xyz.jpg'
-                $oldPath = str_replace('/storage', 'public', $product->image); // Adjust if you store path differently
-                Storage::delete($oldPath);
-            }
-            $path = $request->file('image')->store('public/products');
-            $data['image'] = Storage::url($path);
-            // $data['image'] = $path; // Alternative path storage
+            $path = $request->file('image')->store('products', 'public');
+            $validated['image'] = '/storage/' . $path;
         }
 
-        $product->update($data);
+        $product->update($validated);
 
-        return redirect()->route('products.index') // Or redirect to admin list
-        ->with('success', 'Product updated successfully.');
+        return redirect()->route('products.index')->with('success', 'Product updated successfully.');
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Remove the specified product.
      */
     public function destroy(Product $product)
     {
-        if ($product->image) {
-            $oldPath = str_replace('/storage', 'public', $product->image);
-            Storage::delete($oldPath);
+        // Delete image file if it exists
+        if ($product->image && Storage::disk('public')->exists(str_replace('/storage/', '', $product->image))) {
+            Storage::disk('public')->delete(str_replace('/storage/', '', $product->image));
         }
 
         $product->delete();
 
-        return redirect()->route('products.index')
-            ->with('success', 'Product deleted successfully.');
+        return redirect()->route('products.index')->with('success', 'Product deleted successfully.');
     }
 
+    /**
+     * Search products (optional feature).
+     */
+//    public function search(Request $request)
+//    {
+//        $query = $request->input('query');
+//        $products = Product::where('name', 'like', "%{$query}%")->get();
+//
+//        return view('products.index', compact('products'));
+//    }
     public function search(Request $request)
     {
-        $query = $request->input('query');
+        $search = $request->input('search');
 
-        if (!$query) {
-            // Return all products or an empty set if query is empty
-            $products = Product::latest()->paginate(10); // Or Product::query()->limit(0)->get();
-        } else {
-            $products = Product::where('name', 'LIKE', "%{$query}%")
-                ->orWhere('category', 'LIKE', "%{$query}%")
-                // ->orWhere('description', 'LIKE', "%{$query}%") // Optional: search description too
-                ->latest()
-                ->paginate(10); // Paginate search results too
+        $query = Product::query();
+
+        if (!empty($search)) {
+            $query->where('name', 'like', "%{$search}%")
+                ->orWhere('category', 'like', "%{$search}%")
+                ->orWhere('description', 'like', "%{$search}%");
         }
 
+        $products = $query->orderBy('created_at', 'desc')->paginate(10);
 
-        // Option 1: Return rendered HTML partial
-        if ($request->ajax()) { // Check if it's an AJAX request
-            // Render a partial view containing just the product list part
-            $html = view('products.partials.list', compact('products'))->render();
-            // Also render pagination links if needed
-            $pagination = $products->links('pagination::bootstrap-5')->render();
-
-            // Include pagination HTML in the response
-            return response()->json(['html' => $html, 'pagination' => $pagination]);
+        // If it's an AJAX request, return the partial list only
+        if ($request->ajax()) {
+            return view('products.partials.list', compact('products'))->render();
         }
 
-        // Option 2: Return JSON (Frontend JS handles rendering)
-        // if ($request->ajax()) {
-        //     return response()->json($products); // Returns paginated data structure
-        // }
-
-
-        // For non-AJAX requests (e.g., if JS fails), return the full view
+        // Otherwise, fallback (optional)
         return view('products.index', compact('products'));
     }
 }

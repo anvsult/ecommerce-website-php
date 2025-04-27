@@ -19,18 +19,28 @@
                         <a href="{{ route('products.create') }}" class="btn btn-primary">Add New Product</a>
                     </div>
                 @endauth
+                <form id="search-form" action="{{ route('products.search') }}" method="GET" class="flex items-center space-x-2 mb-4">
+                    <input type="text" name="search" id="search-input" placeholder="Search products..."
+                           class="form-input w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-white"
+                           value="{{ request('search') }}">
 
-                <div class="mb-4">
-                    <input type="text" id="product-search-input" class="form-control" placeholder="Search products by name or category...">
-                </div>
+                    <button type="submit"
+                            class="px-4 mx-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            style="background-color: #2563eb;"
+                    >
+                        Search
+                    </button>
+                </form>
+
+
                 {{-- Include the product list partial --}}
-                <div id="product-list-container">
+                <div id="product-list-items">
                     @include('products.partials.list', ['products' => $products])
                 </div>
 
                 {{-- Pagination Links --}}
                 <div id="pagination-container" class="mt-4">
-                    {{ $products->links('pagination::bootstrap-5') }}
+                    {{ $products->links() }}
                 </div>
 
             </div>
@@ -40,65 +50,39 @@
 
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script> {{-- Or import if using vite --}}
 <script>
-    const searchInput = document.getElementById('product-search-input');
+    const searchInput          = document.getElementById('product-search-input');
     const productListContainer = document.getElementById('product-list-container');
-    const paginationContainer = document.getElementById('pagination-container');
-    let searchTimeout; // To debounce requests
+    const paginationContainer  = document.getElementById('pagination-container');
+    let searchTimeout;
 
-    searchInput.addEventListener('keyup', function() {
-        clearTimeout(searchTimeout); // Clear previous timeout
-        const query = this.value;
+    searchInput.addEventListener('keyup', () => {
+        clearTimeout(searchTimeout);
+        const q = searchInput.value;
 
-        // Debounce: Wait 500ms after user stops typing
         searchTimeout = setTimeout(() => {
-            fetchProducts(query);
+            fetchProducts(q);
         }, 500);
     });
 
     function fetchProducts(query = '', page = 1) {
-        const searchUrl = '{{ route("products.search") }}'; // Use Laravel named route
-
-        // Add page parameter for pagination clicks
-        axios.get(searchUrl, {
-            params: {
-                query: query,
-                page: page // Send current page number
-            },
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest' // Important for request->ajax() check in Laravel
-            }
+        axios.get('{{ route("products.search") }}', {
+            params: { query, page },
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
-            .then(response => {
-                // Update product list and pagination links with the HTML returned from server
-                if(response.data.html) {
-                    productListContainer.innerHTML = response.data.html;
-                }
-                if(response.data.pagination) {
-                    paginationContainer.innerHTML = response.data.pagination;
-                } else {
-                    paginationContainer.innerHTML = ''; // Clear pagination if none returned
-                }
+            .then(({ data }) => {
+                productListContainer.innerHTML = data.html;
+                paginationContainer.innerHTML  = data.pagination;
             })
-            .catch(error => {
-                console.error('Error fetching products:', error);
-                // Optionally display an error message to the user
-                productListContainer.innerHTML = '<p class="text-danger">Error loading products.</p>';
-                paginationContainer.innerHTML = '';
-            });
+            .catch(err => console.error(err));
     }
 
-    // **Handle Pagination Clicks via AJAX**
-    // Need to attach event listener dynamically as pagination links are replaced
-    document.addEventListener('click', function(event) {
-        // Check if the clicked element is a pagination link within the container
-        if (event.target.matches('#pagination-container .pagination a')) {
-            event.preventDefault(); // Prevent default link navigation
-
-            const url = new URL(event.target.href);
-            const page = url.searchParams.get('page'); // Get page number from link href
-            const currentQuery = searchInput.value; // Get current search query
-
-            fetchProducts(currentQuery, page); // Fetch results for the new page
+    // Handle clicks on pagination links:
+    document.addEventListener('click', e => {
+        if (e.target.matches('#pagination-container .pagination a')) {
+            e.preventDefault();
+            const url  = new URL(e.target.href);
+            const page = url.searchParams.get('page');
+            fetchProducts(searchInput.value, page);
         }
     });
 

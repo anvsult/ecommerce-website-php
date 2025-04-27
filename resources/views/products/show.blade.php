@@ -12,7 +12,7 @@
                     <!-- Product Image -->
                     <div class="col-md-6">
                         @if ($product->image)
-                            <img src="{{ asset('storage/' . $product->image) }}" alt="{{ $product->name }}" class="img-fluid rounded">
+                            <img src="{{$product->image }}" alt="{{ $product->name }}" class="img-fluid rounded">
                         @else
                             <p>No image available</p>
                         @endif

@@ -19,8 +19,9 @@
                     </div>
                 @endif
 
-                <form action="{{ route('products.store') }}" method="PUT" enctype="multipart/form-data">
+                <form action="{{ route('products.update', $product->id) }}" method="POST" enctype="multipart/form-data">
                     @csrf
+                    @method('PUT')
 
                     <!-- Name -->
                     <div class="form-outline mb-4">

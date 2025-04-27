@@ -5,7 +5,7 @@
             <div class="card">
                 {{-- Card content as in products/index.blade.php --}}
                 @if($product->image)
-                    <img src="{{ $product->image }}" class="card-img-top" alt="{{ $product->name }}" style="height: 200px; object-fit: cover;">
+                    <img src="{{ $product->image }}" class="card-img-top" alt="{{ $product->name }}" style="height: 200px; object-fit: contain;">
                 @else
                     <img src="https://via.placeholder.com/300x200?text=No+Image" class="card-img-top" alt="No Image" style="height: 200px; object-fit: cover;">
                 @endif
@@ -18,7 +18,17 @@
                     <a href="{{ route('products.show', $product->id) }}" class="btn btn-info btn-sm">View</a>
                     @auth
                         <a href="{{ route('products.edit', $product->id) }}" class="btn btn-warning btn-sm">Edit</a>
-                        {{-- Delete form --}}
+                    @endauth
+                    @auth
+                        <form action="{{ route('products.destroy', $product->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this product?');">
+                            @csrf
+                            @method('DELETE')
+{{--                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>--}}
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </form>
+{{--                        <a href="{{ route('products.destroy', $product->id) }}" class="btn btn-danger btn-sm">Delete</a>--}}
                     @endauth
                 </div>
             </div>

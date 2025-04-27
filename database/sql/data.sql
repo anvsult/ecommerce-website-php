@@ -57,9 +57,11 @@ VALUES ('Ergo Wireless Mouse', 'Peripherals',
        ('XL Gaming Mousepad', 'Accessories',
         'Extended surface mousepad providing ample space for mouse movement and keyboard placement.', 19.99,
         '/storage/products/xl_mousepad.jpg', 250, NOW(), NOW()),
+
        ('Waterproof Bluetooth Speaker', 'Audio',
-        'Rugged and portable Bluetooth speaker with IPX7 waterproof rating and rich sound.', 55.00, NULL, 60, NOW(),
-        NOW()), -- Example without image
+        'Rugged and portable Bluetooth speaker with IPX7 waterproof rating and rich sound.', 55.00,
+        '/storage/products/bluetooth_speaker.jpg', 60, NOW(),NOW()),
+
        ('Adjustable Laptop Stand', 'Accessories', 'Ergonomic aluminum laptop stand to improve posture and cooling.',
         24.99, '/storage/products/laptop_stand.jpg', 90, NOW(), NOW()),
        ('27-inch QHD Monitor', 'Peripherals',
