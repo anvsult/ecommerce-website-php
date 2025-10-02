@@ -1,4 +1,4 @@
-# PHP E-Commerce Project 🛒
+# E-Commerce Website in PHP 🛒
 
 A Laravel-based E-Commerce application that allows users to browse products, add them to a cart, and manage orders. This project demonstrates a full-stack web app with user authentication, admin management, and a responsive UI.
 
